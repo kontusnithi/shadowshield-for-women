@@ -34,12 +34,14 @@ function Tracking() {
 
   useEffect(() => {
     if (!tracking) return;
+    let userId: string | null = null;
+    supabase.auth.getUser().then(({ data }) => { userId = data.user?.id ?? null; });
     const id = navigator.geolocation.watchPosition(
       async (pos) => {
         const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setCoords(next);
         setTrail((prev) => [...prev.slice(-200), next]);
-        await supabase.from("location_pings").insert({ ...next, accuracy: pos.coords.accuracy });
+        if (userId) await supabase.from("location_pings").insert({ user_id: userId, ...next, accuracy: pos.coords.accuracy });
       },
       (err) => toast.error(err.message),
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },

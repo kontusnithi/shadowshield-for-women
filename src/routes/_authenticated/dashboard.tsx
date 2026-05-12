@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { Activity, MapPin, Moon, ShieldCheck, Phone, Brain, Sparkles } from "lucide-react";
+import { Activity, MapPin, Moon, Phone, Brain, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 interface Zone { id: string; name: string; center_lat: number; center_lng: number; radius_m: number; level: ZoneLevel }
 
 function Dashboard() {
+  const [userId, setUserId] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [zones, setZones] = useState<Zone[]>([]);
   const [profile, setProfile] = useState<{ night_guardian: boolean; sensitivity: number; full_name: string | null } | null>(null);
@@ -30,25 +30,20 @@ function Dashboard() {
   const [classifying, setClassifying] = useState(false);
   const classify = useServerFn(classifyPanicText);
 
-  // Initial loads
   useEffect(() => {
-    supabase.from("safety_zones").select("*").then(({ data }) => {
-      if (data) setZones(data as Zone[]);
-    });
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+    supabase.from("safety_zones").select("*").then(({ data }) => { if (data) setZones(data as Zone[]); });
     supabase.from("profiles").select("full_name,night_guardian,sensitivity").maybeSingle().then(({ data }) => {
       if (data) setProfile(data);
     });
     supabase.from("trusted_contacts").select("id", { count: "exact", head: true }).then(({ count }) => setContactCount(count ?? 0));
-
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setCoords({ lat: 12.9716, lng: 77.5946 }), // fallback to demo center
+        () => setCoords({ lat: 12.9716, lng: 77.5946 }),
         { enableHighAccuracy: true, timeout: 8000 },
       );
-    } else {
-      setCoords({ lat: 12.9716, lng: 77.5946 });
-    }
+    } else setCoords({ lat: 12.9716, lng: 77.5946 });
   }, []);
 
   const hour = new Date().getHours();
@@ -66,12 +61,12 @@ function Dashboard() {
     nightGuardian: profile?.night_guardian ?? true,
   }), [hour, zoneInfo, panicTriggered, panicAi, profile]);
 
-  // Persist a risk event whenever score crosses into a new stage
   useEffect(() => {
-    if (!coords || risk.stage === 0) return;
+    if (!coords || !userId || risk.stage === 0) return;
     supabase.from("risk_events").insert({
+      user_id: userId,
       score: risk.score,
-      factors: risk.factors,
+      factors: risk.factors as any,
       stage: `stage_${risk.stage}` as any,
       lat: coords.lat,
       lng: coords.lng,
@@ -79,20 +74,14 @@ function Dashboard() {
   }, [risk.stage]); // eslint-disable-line
 
   const triggerSos = useCallback(async () => {
+    if (!userId) return;
     setPanicTriggered(true);
     toast.error("SOS triggered — escalating", { description: stageDescription(4) });
-
     const { data: contacts } = await supabase.from("trusted_contacts").select("name,phone").order("priority");
-
     const { data: re } = await supabase.from("risk_events").insert({
-      score: 100,
-      factors: { manual_sos: true },
-      stage: "stage_4",
-      lat: coords?.lat,
-      lng: coords?.lng,
-      note: "Manual SOS",
+      user_id: userId, score: 100, factors: { manual_sos: true } as any,
+      stage: "stage_4", lat: coords?.lat, lng: coords?.lng, note: "Manual SOS",
     }).select().single();
-
     const stages = [
       { stage: "stage_1" as const, action: "Safety check sent to user" },
       { stage: "stage_2" as const, action: "Auto-call user (simulated)" },
@@ -101,15 +90,12 @@ function Dashboard() {
     ];
     for (const s of stages) {
       await supabase.from("escalations").insert({
-        risk_event_id: re?.id,
-        stage: s.stage,
-        action: s.action,
-        status: "sent",
-        details: { lat: coords?.lat, lng: coords?.lng, contacts: contacts?.length ?? 0 },
+        user_id: userId, risk_event_id: re?.id, stage: s.stage, action: s.action, status: "sent",
+        details: { lat: coords?.lat, lng: coords?.lng, contacts: contacts?.length ?? 0 } as any,
       });
     }
     setTimeout(() => setPanicTriggered(false), 8000);
-  }, [coords]);
+  }, [coords, userId]);
 
   const runClassify = async () => {
     if (!transcript.trim()) return;
@@ -121,9 +107,7 @@ function Dashboard() {
       else toast.success(`AI panic likelihood: ${(res.score * 100).toFixed(0)}%`);
     } catch (e: any) {
       toast.error(e?.message ?? "Classification failed");
-    } finally {
-      setClassifying(false);
-    }
+    } finally { setClassifying(false); }
   };
 
   return (
@@ -134,16 +118,13 @@ function Dashboard() {
           <h1 className="text-3xl font-display">Live Safety Dashboard</h1>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Activity className="h-3 w-3 text-accent animate-pulse" />
-          Adaptive monitoring active · {hour}:00 local
+          <Activity className="h-3 w-3 text-accent animate-pulse" /> Adaptive monitoring active · {hour}:00 local
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 glass">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-accent" /> Real-time Risk</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-accent" /> Real-time Risk</CardTitle></CardHeader>
           <CardContent className="flex flex-col md:flex-row items-center gap-8">
             <RiskRing score={risk.score} label={risk.label} />
             <div className="flex-1 space-y-3">
@@ -159,7 +140,6 @@ function Dashboard() {
             </div>
           </CardContent>
         </Card>
-
         <Card className="glass flex flex-col items-center justify-center p-6">
           <SosButton onTrigger={triggerSos} />
         </Card>
@@ -172,28 +152,17 @@ function Dashboard() {
       </div>
 
       <Card className="glass">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Brain className="h-4 w-4 text-primary" /> AI Panic Detection</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Brain className="h-4 w-4 text-primary" /> AI Panic Detection</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Type or dictate what's happening. The AI estimates distress likelihood and folds it into your live risk score.
-          </p>
-          <textarea
-            value={transcript}
-            onChange={(e) => setTranscript(e.target.value)}
+          <p className="text-sm text-muted-foreground">Type what's happening. The AI estimates distress likelihood and folds it into your live risk score.</p>
+          <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)}
             placeholder='Try: "Someone has been walking behind me for 15 minutes..."'
-            className="w-full min-h-24 rounded-lg bg-input/30 border border-border/60 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
+            className="w-full min-h-24 rounded-lg bg-input/30 border border-border/60 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
           <div className="flex items-center gap-3">
             <Button onClick={runClassify} disabled={classifying || !transcript.trim()}>
               {classifying ? "Analyzing…" : "Analyze with AI"}
             </Button>
-            {panicAi > 0 && (
-              <span className="text-sm text-muted-foreground">
-                Panic likelihood: <b className="text-foreground">{(panicAi * 100).toFixed(0)}%</b>
-              </span>
-            )}
+            {panicAi > 0 && <span className="text-sm text-muted-foreground">Panic likelihood: <b className="text-foreground">{(panicAi * 100).toFixed(0)}%</b></span>}
           </div>
         </CardContent>
       </Card>
@@ -211,9 +180,7 @@ function StatusCard({ icon: Icon, label, value, accent }: { icon: any; label: st
   return (
     <Card className="glass">
       <CardContent className="p-4 flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-muted/30 grid place-items-center">
-          <Icon className="h-5 w-5" />
-        </div>
+        <div className="h-10 w-10 rounded-lg bg-muted/30 grid place-items-center"><Icon className="h-5 w-5" /></div>
         <div>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
           <div className={`font-mono text-xl uppercase ${colorMap[accent] ?? ""}`}>{value}</div>
