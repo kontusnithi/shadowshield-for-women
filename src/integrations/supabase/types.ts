@@ -14,7 +14,209 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      escalations: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          risk_event_id: string | null
+          stage: Database["public"]["Enums"]["escalation_stage"]
+          status: Database["public"]["Enums"]["escalation_status"]
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          risk_event_id?: string | null
+          stage: Database["public"]["Enums"]["escalation_stage"]
+          status?: Database["public"]["Enums"]["escalation_status"]
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          risk_event_id?: string | null
+          stage?: Database["public"]["Enums"]["escalation_stage"]
+          status?: Database["public"]["Enums"]["escalation_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalations_risk_event_id_fkey"
+            columns: ["risk_event_id"]
+            isOneToOne: false
+            referencedRelation: "risk_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_pings: {
+        Row: {
+          accuracy: number | null
+          created_at: string
+          id: string
+          lat: number
+          lng: number
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          created_at?: string
+          id?: string
+          lat: number
+          lng: number
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          created_at?: string
+          id?: string
+          lat?: number
+          lng?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          night_guardian: boolean
+          phone: string | null
+          sensitivity: number
+          shake_threshold: number
+          silent_phrase: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          night_guardian?: boolean
+          phone?: string | null
+          sensitivity?: number
+          shake_threshold?: number
+          silent_phrase?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          night_guardian?: boolean
+          phone?: string | null
+          sensitivity?: number
+          shake_threshold?: number
+          silent_phrase?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      risk_events: {
+        Row: {
+          created_at: string
+          factors: Json
+          id: string
+          lat: number | null
+          lng: number | null
+          note: string | null
+          score: number
+          stage: Database["public"]["Enums"]["escalation_stage"] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          factors?: Json
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          note?: string | null
+          score: number
+          stage?: Database["public"]["Enums"]["escalation_stage"] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          factors?: Json
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          note?: string | null
+          score?: number
+          stage?: Database["public"]["Enums"]["escalation_stage"] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      safety_zones: {
+        Row: {
+          center_lat: number
+          center_lng: number
+          created_at: string
+          description: string | null
+          id: string
+          level: Database["public"]["Enums"]["zone_level"]
+          name: string
+          radius_m: number
+        }
+        Insert: {
+          center_lat: number
+          center_lng: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          level?: Database["public"]["Enums"]["zone_level"]
+          name: string
+          radius_m?: number
+        }
+        Update: {
+          center_lat?: number
+          center_lng?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          level?: Database["public"]["Enums"]["zone_level"]
+          name?: string
+          radius_m?: number
+        }
+        Relationships: []
+      }
+      trusted_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          priority: number
+          relation: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          priority?: number
+          relation?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          priority?: number
+          relation?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +225,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      escalation_stage: "stage_1" | "stage_2" | "stage_3" | "stage_4"
+      escalation_status:
+        | "pending"
+        | "sent"
+        | "acknowledged"
+        | "resolved"
+        | "cancelled"
+      zone_level: "safe" | "medium" | "high" | "extreme"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +359,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      escalation_stage: ["stage_1", "stage_2", "stage_3", "stage_4"],
+      escalation_status: [
+        "pending",
+        "sent",
+        "acknowledged",
+        "resolved",
+        "cancelled",
+      ],
+      zone_level: ["safe", "medium", "high", "extreme"],
+    },
   },
 } as const
