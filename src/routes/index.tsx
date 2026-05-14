@@ -1,3 +1,7 @@
+import LocationTracker from "@/components/LocationTracker";
+import LiveMap from "@/components/LiveMap";
+import TrackingStatus from "@/components/TrackingStatus";
+import RiskStatusCard from "@/components/RiskStatusCard";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Shield, Brain, Radar, MapPin, Zap, Lock, Bell, Activity } from "lucide-react";
@@ -42,7 +46,7 @@ function Landing() {
           </nav>
         </div>
       </header>
-
+      
       {/* Hero */}
       <section className="relative max-w-6xl mx-auto px-6 pt-20 pb-24 text-center">
         <motion.div
@@ -69,6 +73,8 @@ function Landing() {
             </Button>
           </div>
         </motion.div>
+        <TrackingStatus />
+        <RiskStatusCard />
 
         {/* Score preview card */}
         <motion.div
