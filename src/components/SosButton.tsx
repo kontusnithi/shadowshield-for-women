@@ -1,3 +1,4 @@
+import emailjs from "@emailjs/browser";
 import { useEffect, useState } from "react";
 import { Shield, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,29 @@ export function SosButton({ onTrigger, holdMs = 1200, size = "xl" }: SosButtonPr
   const [pressing, setPressing] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  const triggerSOS = () => {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const locationLink = `https://maps.google.com/?q=${position.coords.latitude},${position.coords.longitude}`;
+
+      emailjs
+        .send(
+          "service_cbdj2nh",
+          "template_jenycrp",
+          {
+            location: locationLink,
+          },
+          "G8bXE955hXEYC3OdB"
+        )
+        .then(() => {
+          alert("🚨 Emergency Alert Sent!");
+        })
+        .catch((error) => {
+          console.log(error);
+          alert("Failed to send alert");
+        });
+    });
+  };
+
   useEffect(() => {
     if (!pressing) {
       setProgress(0);
@@ -25,6 +49,7 @@ export function SosButton({ onTrigger, holdMs = 1200, size = "xl" }: SosButtonPr
       const p = Math.min(1, (t - start) / holdMs);
       setProgress(p);
       if (p >= 1) {
+        triggerSOS();
         onTrigger();
         setPressing(false);
         return;
