@@ -4,10 +4,10 @@ ShadowShield+ is an AI-powered women safety platform that predicts risky situati
 ## screenshots
 
 ### Landing Page
-![Landing Page](./screenshots/landing-page.png)
+![Landing Page](./Screenshots/landing-page.png)
 
 ### Dashboard
-![Dashboard](./screenshots/dashboard.png)
+![Dashboard](./Screenshots/dashboard.png)
 
 ### Live Tracking
-![Live Tracking](./screenshots/tracking.png)
+![Live Tracking](./Screenshots/tracking.png)
